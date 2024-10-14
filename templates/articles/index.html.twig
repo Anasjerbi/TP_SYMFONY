@@ -1,36 +1,55 @@
 {% extends 'base.html.twig' %}
-{% block title%} Liste des Articles{% endblock %}
+
+{% block title %} Liste des Articles {% endblock %}
+
 {% block body %}
-{% if articles %}
-<table id="articles" class="table table-striped">
-<thead>
-<tr>
-<th>Nom</th>
-<th>Prix</th>
-<th>Actions</th>
-</tr>
-</thead>
-<tbody>
-{% for article in articles %}
-<tr>
-<td>{{ article.nom }}</td>
-<td>{{ article.prix }}</td>
-<td>
-<a href="/article/{{ article.id }}" class="btn btn-dark">Détails</a>
+    {% if articles %}
+        <table id="articles" class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Prix</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for article in articles %}
+                    <tr>
+                        <td>{{ article.nom }}</td>
+                        <td>{{ article.prix }}</td>
+                        <td>
+                            <a href="/article/{{ article.id }}" class="btn btn-dark">Détails</a>
+                            <a href="/article/edit/{{ article.id }}" class="btn btn-dark">Modifier</a>
+                            <button onclick="deleteArticle({{ article.id }})" class="btn btn-danger">Supprimer</button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Aucun articles</p>
+    {% endif %}
+{% endblock %}
 
-<a href="/article/edit/{{ article.id }}" class="btn btn-dark">Modifier</a>
+{% block javascripts %}
+    <script>
+        async function deleteArticle(id) {
+            const response = await fetch(`/article/delete/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
 
-<a href="/article/delete/{{ article.id }}" class="btn btn-danger"
-
-onclick="return confirm('Etes-
-vous sûr de supprimer cet article?');">Supprimer</a>
-
-</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-{% else %}
-<p>Aucun articles</p>
-{% endif %}
+            if (response.ok) {
+                const data = await response.json();
+                alert(data.message); // Notify success
+                // Refresh the page to show the updated list of articles
+                location.reload();
+            } else {
+                const errorData = await response.json();
+                alert(errorData.message); // Notify error
+            }
+        }
+    </script>
 {% endblock %}

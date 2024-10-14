@@ -1,7 +1,13 @@
 {% extends 'base.html.twig' %}
-{% block title %}ModifierArticle{% endblock %}
+
+{% block title %}Modifier Article{% endblock %}
+
 {% block body %}
-{{ form_start(form) }}
-{{ form_widget(form) }}
-{{ form_end(form) }}
+    <h1>Modifier Article</h1> <!-- Added a heading for clarity -->
+
+    {{ form_start(form) }}
+        {{ form_row(form.nom) }}  <!-- Render the 'nom' field -->
+        {{ form_row(form.prix) }} <!-- Render the 'prix' field -->
+        <button type="submit" class="btn btn-success">Modifier</button> <!-- Submit button -->
+    {{ form_end(form) }}
 {% endblock %}
