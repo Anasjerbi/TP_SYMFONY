@@ -35,8 +35,12 @@ class Article
      * )
      */
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
-    private ?float $prix = null; // Changed to float
+    private ?float $prix = null;
 
+    #[ORM\ManyToOne(inversedBy: 'articles')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Category $category = null; // Changed to float
+    
     public function getId(): ?int
     {
         return $this->id;
@@ -62,6 +66,18 @@ class Article
     public function setPrix(?float $prix): static // Changed parameter type to float
     {
         $this->prix = $prix;
+
+        return $this;
+    }
+
+    public function getCategory(): ?Category
+    {
+        return $this->category;
+    }
+
+    public function setCategory(?Category $category): static
+    {
+        $this->category = $category;
 
         return $this;
     }

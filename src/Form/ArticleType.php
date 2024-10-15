@@ -2,7 +2,9 @@
 
 namespace App\Form;
 
+use App\Entity\Category;
 use App\Entity\Article;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
@@ -19,7 +21,11 @@ class ArticleType extends AbstractType
             ])
             ->add('prix', NumberType::class, [
                 'label' => 'Prix',
-                'scale' => 2, // to control decimal precision
+            ])
+            ->add('category', EntityType::class, [
+                'class' => Category::class,
+                'choice_label' => 'titre',
+                'label' => 'Catégorie',
             ]);
     }
 

@@ -2,8 +2,10 @@
 
 namespace App\Controller;
 
-use App\Form\ArticleType;
+use App\Entity\Category;
 use App\Entity\Article;
+use App\Form\CategoryType;
+use App\Form\ArticleType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
@@ -13,7 +15,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 
 class IndexController extends AbstractController
 {
-    private EntityManagerInterface $entityManager; // Use typed property
+    private EntityManagerInterface $entityManager; // Typed property
 
     // Injecting EntityManagerInterface via constructor
     public function __construct(EntityManagerInterface $entityManager)
@@ -87,36 +89,35 @@ class IndexController extends AbstractController
         return $this->render('articles/show.html.twig', ['article' => $article]);
     }
 
-  /**
- * @Route("/article/edit/{id}", name="edit_article", methods={"GET", "POST"})
- */
-public function edit(Request $request, int $id): Response
-{
-    // Fetch the article by ID
-    $article = $this->entityManager->getRepository(Article::class)->find($id);
+    /**
+     * @Route("/article/edit/{id}", name="edit_article", methods={"GET", "POST"})
+     */
+    public function edit(Request $request, int $id): Response
+    {
+        // Fetch the article by ID
+        $article = $this->entityManager->getRepository(Article::class)->find($id);
 
-    // Check if the article exists
-    if (!$article) {
-        throw $this->createNotFoundException('Article not found');
+        // Check if the article exists
+        if (!$article) {
+            throw $this->createNotFoundException('Article not found');
+        }
+
+        // Create and handle the form
+        $form = $this->createForm(ArticleType::class, $article);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            // Save the updated article to the database
+            $this->entityManager->flush();
+
+            // Redirect to the article list after updating
+            return $this->redirectToRoute('article_list');
+        }
+
+        return $this->render('articles/edit.html.twig', [
+            'form' => $form->createView(),
+        ]);
     }
-
-    // Create and handle the form
-    $form = $this->createForm(ArticleType::class, $article);
-    $form->handleRequest($request);
-
-    if ($form->isSubmitted() && $form->isValid()) {
-        // Save the updated article to the database
-        $this->entityManager->flush();
-
-        // Redirect to the article list after updating
-        return $this->redirectToRoute('article_list');
-    }
-
-    return $this->render('articles/edit.html.twig', [
-        'form' => $form->createView(),
-    ]);
-}
-
 
     /**
      * @Route("/article/delete/{id}", name="delete_article", methods={"DELETE"})
@@ -138,4 +139,28 @@ public function edit(Request $request, int $id): Response
         // Return a JSON response indicating success
         return new JsonResponse(['message' => 'Article deleted successfully'], Response::HTTP_OK);
     }
+
+    /**
+     * @Route("/category/newCat", name="new_category", methods={"GET", "POST"})
+     */
+    public function newCategory(Request $request): Response
+    {
+        $category = new Category();
+        $form = $this->createForm(CategoryType::class, $category);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            // Persist the new category
+            $this->entityManager->persist($category);
+            $this->entityManager->flush();
+
+            // Redirect or handle further logic
+            return $this->redirectToRoute('article_list');
+        }
+
+        return $this->render('articles/newCategory.html.twig', [
+            'form' => $form->createView(),
+        ]);
+    }
 }
+
