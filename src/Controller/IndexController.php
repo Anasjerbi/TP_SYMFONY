@@ -3,9 +3,15 @@
 namespace App\Controller;
 
 use App\Entity\Category;
+use App\Entity\CategorySearch;
+use App\Form\CategorySearchType;
 use App\Entity\Article;
 use App\Form\CategoryType;
 use App\Form\ArticleType;
+use App\Entity\PropertySearch;
+use App\Form\PropertySearchType;
+use App\Entity\PriceSearch; // Ensure you import the PriceSearch class
+use App\Form\PriceSearchType; // Ensure you import the PriceSearchType class
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,9 +21,8 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 
 class IndexController extends AbstractController
 {
-    private EntityManagerInterface $entityManager; // Typed property
+    private EntityManagerInterface $entityManager;
 
-    // Injecting EntityManagerInterface via constructor
     public function __construct(EntityManagerInterface $entityManager)
     {
         $this->entityManager = $entityManager;
@@ -26,11 +31,27 @@ class IndexController extends AbstractController
     /**
      * @Route("/", name="article_list")
      */
-    public function home(): Response
+    public function home(Request $request): Response
     {
-        // Fetch all articles from the Article repository
+        $propertySearch = new PropertySearch();
+        $form = $this->createForm(PropertySearchType::class, $propertySearch);
+        $form->handleRequest($request);
+        
+        // Initialize the articles array
         $articles = $this->entityManager->getRepository(Article::class)->findAll();
-        return $this->render('articles/index.html.twig', ['articles' => $articles]);
+        
+        if ($form->isSubmitted() && $form->isValid()) {
+            $nom = $propertySearch->getNom();
+
+            if (!empty($nom)) {
+                $articles = $this->entityManager->getRepository(Article::class)->findBy(['nom' => $nom]);
+            } 
+        }
+
+        return $this->render('articles/index.html.twig', [
+            'form' => $form->createView(),
+            'articles' => $articles,
+        ]);
     }
 
     /**
@@ -38,16 +59,13 @@ class IndexController extends AbstractController
      */
     public function save(): Response
     {
-        // Create a new Article and set its properties
         $article = new Article();
         $article->setNom('Article 1');
         $article->setPrix(1000.00); // Ensure to set as a decimal
 
-        // Persist the article to the database
         $this->entityManager->persist($article);
         $this->entityManager->flush();
 
-        // Return a response with the article's ID
         return new Response('Article enregistré avec id ' . $article->getId());
     }
 
@@ -62,15 +80,15 @@ class IndexController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // Persist the new article
             $this->entityManager->persist($article);
             $this->entityManager->flush();
 
-            // Redirect to the article list after saving
             return $this->redirectToRoute('article_list');
         }
 
-        return $this->render('articles/new.html.twig', ['form' => $form->createView()]);
+        return $this->render('articles/new.html.twig', [
+            'form' => $form->createView(),
+        ]);
     }
 
     /**
@@ -78,15 +96,15 @@ class IndexController extends AbstractController
      */
     public function show(int $id): Response
     {
-        // Fetch the article by ID from the repository
         $article = $this->entityManager->getRepository(Article::class)->find($id);
 
-        // Check if the article exists
         if (!$article) {
             throw $this->createNotFoundException('Article not found');
         }
 
-        return $this->render('articles/show.html.twig', ['article' => $article]);
+        return $this->render('articles/show.html.twig', [
+            'article' => $article,
+        ]);
     }
 
     /**
@@ -94,28 +112,23 @@ class IndexController extends AbstractController
      */
     public function edit(Request $request, int $id): Response
     {
-        // Fetch the article by ID
         $article = $this->entityManager->getRepository(Article::class)->find($id);
 
-        // Check if the article exists
         if (!$article) {
             throw $this->createNotFoundException('Article not found');
         }
 
-        // Create and handle the form
         $form = $this->createForm(ArticleType::class, $article);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // Save the updated article to the database
             $this->entityManager->flush();
-
-            // Redirect to the article list after updating
             return $this->redirectToRoute('article_list');
         }
 
         return $this->render('articles/edit.html.twig', [
             'form' => $form->createView(),
+            'article' => $article, // Added for context
         ]);
     }
 
@@ -124,19 +137,15 @@ class IndexController extends AbstractController
      */
     public function delete(Request $request, int $id): JsonResponse
     {
-        // Fetch the article by ID from the repository
         $article = $this->entityManager->getRepository(Article::class)->find($id);
 
-        // Check if the article exists
         if (!$article) {
             return new JsonResponse(['message' => 'Article not found'], Response::HTTP_NOT_FOUND);
         }
 
-        // Remove the article
         $this->entityManager->remove($article);
         $this->entityManager->flush();
 
-        // Return a JSON response indicating success
         return new JsonResponse(['message' => 'Article deleted successfully'], Response::HTTP_OK);
     }
 
@@ -150,11 +159,8 @@ class IndexController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // Persist the new category
             $this->entityManager->persist($category);
             $this->entityManager->flush();
-
-            // Redirect or handle further logic
             return $this->redirectToRoute('article_list');
         }
 
@@ -162,5 +168,58 @@ class IndexController extends AbstractController
             'form' => $form->createView(),
         ]);
     }
-}
 
+    /**
+     * @Route("/art_cat/", name="article_par_cat", methods={"GET", "POST"})
+     */
+    public function articlesParCategorie(Request $request): Response
+    {
+        $categorySearch = new CategorySearch();
+        $form = $this->createForm(CategorySearchType::class, $categorySearch);
+        $form->handleRequest($request);
+        
+        $articles = [];
+        $articles = $this->entityManager->getRepository(Article::class)->findAll();
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $category = $categorySearch->getCategory();
+
+            if ($category) { // Check if category is not null
+                $articles = $category->getArticles(); // Assuming getArticles() returns an iterable of articles
+            } else {
+                $articles = $this->entityManager->getRepository(Article::class)->findAll(); // Fetch all articles if no category is selected
+            }
+        }
+
+        return $this->render('articles/articlesParCategorie.html.twig', [
+            'form' => $form->createView(),
+            'articles' => $articles,
+        ]);
+    }
+
+    /**
+     * @Route("/art_prix/", name="article_par_prix", methods={"GET", "POST"})
+     */
+    public function articlesParPrix(Request $request): Response
+    {
+        $priceSearch = new PriceSearch();
+        $form = $this->createForm(PriceSearchType::class, $priceSearch);
+        $form->handleRequest($request);
+
+        $articles = []; // Initialize articles array
+        $articles = $this->entityManager->getRepository(Article::class)->findAll();
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $minPrice = $priceSearch->getMinPrice();
+            $maxPrice = $priceSearch->getMaxPrice();
+            $articles = $this->entityManager
+                             ->getRepository(Article::class)
+                             ->findByPriceRange($minPrice, $maxPrice);
+        }
+
+        return $this->render('articles/articlesParPrix.html.twig', [
+            'form' => $form->createView(),
+            'articles' => $articles,
+        ]);
+    }
+}
